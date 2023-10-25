@@ -10,12 +10,14 @@ import type {
   ILabelStyle,
 } from './types/timezone'
 import { TimezoneSelectOptions } from './types/timezone'
+import { useEffect } from 'react'
 
 export function useTimezoneSelect({
   timezones = allTimezones,
   labelStyle = 'original',
   displayValue = 'GMT',
   maxAbbrLength = 4,
+  date,
 }: TimezoneSelectOptions): {
   parseTimezone: (zone: ITimezone) => ITimezoneOption
   options: ITimezoneOption[]
@@ -24,8 +26,10 @@ export function useTimezoneSelect({
     return Object.entries(timezones)
       .map(zone => {
         try {
-          const now = spacetime.now(zone[0])
-          const tz = now.timezone()
+          const currentDate = date
+            ? spacetime(date, zone[0])
+            : spacetime.now(zone[0])
+          const tz = currentDate.timezone()
           const tzStrings = soft(zone[0])
 
           let label = ''
@@ -33,12 +37,12 @@ export function useTimezoneSelect({
           const standardAbbr = tzStrings?.[0]?.standard?.abbr ?? ''
           const dstAbbr = tzStrings?.[0]?.daylight?.abbr ?? standardAbbr
 
-          let abbr = now.isDST() ? dstAbbr : standardAbbr
+          let abbr = currentDate.isDST() ? dstAbbr : standardAbbr
 
           const standardAltName = tzStrings?.[0]?.standard?.name ?? ''
           const dstAltName = tzStrings?.[0]?.daylight?.name ?? standardAltName
 
-          let altName = now.isDST() ? dstAltName : standardAltName
+          let altName = currentDate.isDST() ? dstAltName : standardAltName
 
           const min = tz.current.offset * 60
           const hr =
@@ -74,7 +78,7 @@ export function useTimezoneSelect({
       })
       .filter(Boolean)
       .sort((a: ITimezoneOption, b: ITimezoneOption) => a.offset - b.offset)
-  }, [labelStyle, timezones])
+  }, [labelStyle, timezones, date])
 
   const findFuzzyTz = (zone: string): ITimezoneOption => {
     let currentTime = spacetime.now('GMT')
@@ -153,6 +157,7 @@ const TimezoneSelect = ({
   displayValue,
   maxAbbrLength,
   timezones,
+  date,
   ...props
 }: Props) => {
   const { options, parseTimezone } = useTimezoneSelect({
@@ -160,6 +165,7 @@ const TimezoneSelect = ({
     labelStyle,
     displayValue,
     maxAbbrLength,
+    date,
   })
 
   const handleChange = (tz: ITimezoneOption) => {
